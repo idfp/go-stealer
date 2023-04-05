@@ -201,7 +201,6 @@ func FirefoxCrackLoginData(profilePath string)([]Credential, error){
 		return credentials, err
 	}
 	for _, login := range logins.Logins{
-		fmt.Println(login.Hostname)
 		_, y, z := DecodeLoginData(login.EncryptedUsername)
 		username, err := decryptTripleDES(res[:24], y, z)
 		if err != nil{
