@@ -1,6 +1,8 @@
 # Golang Credential Stealer
 Demonstration of gaining access into cookies & login credentials. Currently only supports firefox & chrome, planning to support edge but i have no interest in any other browser since the main purpose of this repo is just as demonstration.
 
+Special thanks to [@lclevy](https://github.com/lclevy) for their implementation of credential decrypting, all algorithms I use for decrypting firefox login credentials are just replica of [Firepwd](https://github.com/lclevy/firepwd). I just rewrite it completely in go.
+
 Please note that any illegal action related to this program is highly discouraged, it is user's resposibility for anything done with this distribution and has nothing to do with me.
 
 > Currently only windows is supported, and older version of firefox / chrome might be incompatible (this is intentional since most people don't use older browser anyway).
