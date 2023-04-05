@@ -71,3 +71,11 @@ Password: ******
 
 Saving all result to result.json
 ```
+
+### Mitigation
+To prevent yourself from being a victim of this attack, here's some tips for you: 
+1. Prevent initial access to your device, this includes but not limited to: executing random exe file, opening suspicious office documents, or visiting random websites.
+2. Activate 2FA whenever it's possible.
+3. Use firefox master password, this will prevent credential stealing in firefox. Tt is bruteforcable so make the password carefully, well they still will be able to steal your cookies and chrome credentials anyway.
+![master password](https://images2.imgbox.com/c0/35/12lGohWg_o.png)
+4. Do not save any login credential on your browser, just either remember it or use local password manager.
